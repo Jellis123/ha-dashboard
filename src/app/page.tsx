@@ -11,6 +11,8 @@ import { QuickActions } from "@/components/QuickActions";
 import { PeopleSection } from "@/components/PeopleSection";
 import { ClimateSection } from "@/components/climate/ClimateSection";
 import { TemperatureOverview } from "@/components/climate/TemperatureOverview";
+import { TemperatureGraph } from "@/components/climate/TemperatureGraph";
+import { HumidityGraph } from "@/components/climate/HumidityGraph";
 import { MediaSection } from "@/components/media/MediaSection";
 import { MediaTab } from "@/components/media/MediaTab";
 import { SecuritySection } from "@/components/security/SecuritySection";
@@ -48,6 +50,8 @@ export default function Home() {
         {tab === "climate" && (
           <div className="mt-4 flex flex-col gap-5">
             <ClimateSection />
+            <TemperatureGraph />
+            <HumidityGraph />
             <TemperatureOverview />
           </div>
         )}
