@@ -74,37 +74,7 @@ export function TemperatureGraph() {
           stroke: ROOM_COLORS[i],
           width: 2.5,
           points: { show: false },
-          paths: (u: uPlot, seriesIdx: number) => {
-            const s = u.series[seriesIdx];
-            const xdata = u.data[0];
-            const ydata = u.data[seriesIdx];
-            const scaleX = u.scales.x;
-            const scaleY = u.scales[s.scale!];
-            if (!scaleX || !scaleY) return null;
-
-            const path = new Path2D();
-            let first = true;
-            let prevX = 0, prevY = 0;
-
-            for (let i = 0; i < xdata.length; i++) {
-              const val = ydata[i];
-              if (val == null || isNaN(val as number)) continue;
-              const cx = u.valToPos(xdata[i], "x", true);
-              const cy = u.valToPos(val as number, s.scale!, true);
-
-              if (first) {
-                path.moveTo(cx, cy);
-                first = false;
-              } else {
-                const cpx = (prevX + cx) / 2;
-                path.bezierCurveTo(cpx, prevY, cpx, cy, cx, cy);
-              }
-              prevX = cx;
-              prevY = cy;
-            }
-
-            return { stroke: path, fill: undefined, clip: undefined, band: undefined, gaps: undefined, flags: 0 };
-          },
+          paths: uPlot.paths.spline!(),
         })),
       ],
     };
