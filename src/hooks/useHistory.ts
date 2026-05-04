@@ -67,13 +67,14 @@ export function useMultiHistory(entityIds: string[], hours: number = 24): Record
         const parsed: Record<string, HistoryPoint[]> = {};
         for (const id of entityIds) {
           const states = (result as Record<string, Array<{ s?: string; state?: string; lu?: number; last_changed?: string }>>)[id] || [];
-          parsed[id] = [];
+          const raw: HistoryPoint[] = [];
           for (const s of states) {
             const val = parseFloat((s.s ?? s.state) || "");
             if (isNaN(val)) continue;
             const time = s.lu ? s.lu : new Date(s.last_changed || "").getTime() / 1000;
-            parsed[id].push({ time, value: val });
+            raw.push({ time, value: val });
           }
+          parsed[id] = downsample(raw, 100);
         }
         setData(parsed);
       })
@@ -81,4 +82,15 @@ export function useMultiHistory(entityIds: string[], hours: number = 24): Record
   }, [connection, entityIds.join(","), hours]);
 
   return data;
+}
+
+function downsample(points: HistoryPoint[], maxPoints: number): HistoryPoint[] {
+  if (points.length <= maxPoints) return points;
+  const step = (points.length - 1) / (maxPoints - 1);
+  const result: HistoryPoint[] = [];
+  for (let i = 0; i < maxPoints; i++) {
+    const idx = Math.round(i * step);
+    result.push(points[idx]);
+  }
+  return result;
 }
