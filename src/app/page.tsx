@@ -2,14 +2,19 @@
 
 import { useState } from "react";
 import { HAProvider } from "@/components/HAProvider";
+import { ConnectionBanner } from "@/components/ConnectionBanner";
 import { RoomCard } from "@/components/rooms/RoomCard";
 import { RoomSheet } from "@/components/rooms/RoomSheet";
 import { StatusBar } from "@/components/StatusBar";
 import { WeatherCard } from "@/components/WeatherCard";
 import { QuickActions } from "@/components/QuickActions";
+import { PeopleSection } from "@/components/PeopleSection";
 import { ClimateSection } from "@/components/climate/ClimateSection";
+import { TemperatureOverview } from "@/components/climate/TemperatureOverview";
 import { MediaSection } from "@/components/media/MediaSection";
+import { MediaTab } from "@/components/media/MediaTab";
 import { SecuritySection } from "@/components/security/SecuritySection";
+import { ShoppingList } from "@/components/ShoppingList";
 import { NavBar } from "@/components/NavBar";
 import { rooms } from "@/lib/rooms";
 
@@ -18,11 +23,13 @@ export default function Home() {
 
   return (
     <HAProvider>
+      <ConnectionBanner />
       <main className="mx-auto max-w-lg px-4 pb-20 pt-4">
         <StatusBar />
 
         {tab === "home" && (
           <div className="mt-4 flex flex-col gap-5">
+            <PeopleSection />
             <WeatherCard />
             <QuickActions />
             <section>
@@ -39,20 +46,21 @@ export default function Home() {
         )}
 
         {tab === "climate" && (
-          <div className="mt-4">
+          <div className="mt-4 flex flex-col gap-5">
             <ClimateSection />
+            <TemperatureOverview />
           </div>
         )}
 
         {tab === "media" && (
           <div className="mt-4">
-            <MediaSection />
+            <MediaTab />
           </div>
         )}
 
         {tab === "more" && (
-          <div className="mt-4 text-sm text-text-muted">
-            <p>More features coming soon...</p>
+          <div className="mt-4 flex flex-col gap-5">
+            <ShoppingList />
           </div>
         )}
       </main>
