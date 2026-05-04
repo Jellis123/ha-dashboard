@@ -71,9 +71,51 @@ export function HumidityGraph() {
         ...rooms.map((room, i) => ({
           label: room.name,
           stroke: ROOM_COLORS[i],
-          width: 1.5,
+          width: 2,
           fill: ROOM_COLORS[i] + "20",
           points: { show: false },
+          paths: (u: uPlot, seriesIdx: number) => {
+            const s = u.series[seriesIdx];
+            const xdata = u.data[0];
+            const ydata = u.data[seriesIdx];
+            const scaleX = u.scales.x;
+            const scaleY = u.scales[s.scale!];
+            if (!scaleX || !scaleY) return null;
+
+            const stroke = new Path2D();
+            const fill = new Path2D();
+            let first = true;
+            let prevX = 0, prevY = 0;
+            let firstX = 0;
+            const baseline = u.valToPos(u.scales[s.scale!]!.min!, s.scale!, true);
+
+            for (let i = 0; i < xdata.length; i++) {
+              const val = ydata[i];
+              if (val == null || isNaN(val as number)) continue;
+              const cx = u.valToPos(xdata[i], "x", true);
+              const cy = u.valToPos(val as number, s.scale!, true);
+
+              if (first) {
+                stroke.moveTo(cx, cy);
+                fill.moveTo(cx, baseline);
+                fill.lineTo(cx, cy);
+                firstX = cx;
+                first = false;
+              } else {
+                const cpx = (prevX + cx) / 2;
+                stroke.bezierCurveTo(cpx, prevY, cpx, cy, cx, cy);
+                fill.bezierCurveTo(cpx, prevY, cpx, cy, cx, cy);
+              }
+              prevX = cx;
+              prevY = cy;
+            }
+
+            fill.lineTo(prevX, baseline);
+            fill.lineTo(firstX, baseline);
+            fill.closePath();
+
+            return { stroke, fill, clip: undefined, band: undefined, gaps: undefined, flags: 0 };
+          },
         })),
       ],
     };
