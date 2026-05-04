@@ -7,11 +7,11 @@ import { useMultiHistory } from "@/hooks/useHistory";
 import { rooms } from "@/lib/rooms";
 
 const ROOM_COLORS = [
-  "#6366f180", // living room
-  "#a78bfa80", // bedroom
-  "#06b6d480", // office
-  "#f59e0b80", // kitchen
-  "#22c55e80", // library
+  "#6366f1",
+  "#a78bfa",
+  "#06b6d4",
+  "#f59e0b",
+  "#22c55e",
 ];
 
 export function HumidityGraph() {
@@ -23,32 +23,38 @@ export function HumidityGraph() {
   useEffect(() => {
     if (!chartRef.current) return;
 
-    const allTimes = new Set<number>();
-    for (const id of entityIds) {
-      for (const p of history[id] || []) allTimes.add(p.time);
-    }
-    const times = Array.from(allTimes).sort((a, b) => a - b);
-    if (times.length < 2) return;
+    const now = Math.floor(Date.now() / 1000);
+    const start = now - 24 * 60 * 60;
+    const interval = (24 * 60 * 60) / 96;
+    const times: number[] = [];
+    for (let t = start; t <= now; t += interval) times.push(t);
 
-    const data: uPlot.AlignedData = [
-      new Float64Array(times),
-      ...entityIds.map((id) => {
-        const points = history[id] || [];
-        const values = new Float64Array(times.length);
-        let pi = 0;
-        for (let i = 0; i < times.length; i++) {
-          while (pi < points.length - 1 && points[pi + 1].time <= times[i]) pi++;
-          values[i] = points[pi]?.value ?? NaN;
+    const series: (number | null)[][] = entityIds.map((id) => {
+      const points = history[id] || [];
+      if (points.length === 0) return times.map(() => null);
+      return times.map((t) => {
+        if (t <= points[0].time) return points[0].value;
+        if (t >= points[points.length - 1].time) return points[points.length - 1].value;
+        for (let i = 0; i < points.length - 1; i++) {
+          if (points[i].time <= t && points[i + 1].time >= t) {
+            const ratio = (t - points[i].time) / (points[i + 1].time - points[i].time);
+            return points[i].value + ratio * (points[i + 1].value - points[i].value);
+          }
         }
-        return values;
-      }),
-    ];
+        return points[points.length - 1].value;
+      });
+    });
 
+    const hasData = series.some((s) => s.some((v) => v !== null));
+    if (!hasData) return;
+
+    const data: uPlot.AlignedData = [times, ...series];
     const width = chartRef.current.clientWidth;
+    const splinePaths = uPlot.paths.spline!();
 
     const opts: uPlot.Options = {
       width,
-      height: 150,
+      height: 160,
       cursor: { show: true, x: true, y: false },
       select: { show: false, left: 0, top: 0, width: 0, height: 0 },
       legend: { show: false },
@@ -72,9 +78,9 @@ export function HumidityGraph() {
           label: room.name,
           stroke: ROOM_COLORS[i],
           width: 2,
-          fill: ROOM_COLORS[i] + "20",
+          fill: ROOM_COLORS[i] + "15",
           points: { show: false },
-          paths: uPlot.paths.spline!(),
+          paths: splinePaths,
         })),
       ],
     };
@@ -82,16 +88,13 @@ export function HumidityGraph() {
     if (plotRef.current) plotRef.current.destroy();
     plotRef.current = new uPlot(opts, data, chartRef.current);
 
-    return () => {
-      plotRef.current?.destroy();
-      plotRef.current = null;
-    };
+    return () => { plotRef.current?.destroy(); plotRef.current = null; };
   }, [history, entityIds]);
 
   useEffect(() => {
     const handleResize = () => {
       if (plotRef.current && chartRef.current) {
-        plotRef.current.setSize({ width: chartRef.current.clientWidth, height: 150 });
+        plotRef.current.setSize({ width: chartRef.current.clientWidth, height: 160 });
       }
     };
     window.addEventListener("resize", handleResize);

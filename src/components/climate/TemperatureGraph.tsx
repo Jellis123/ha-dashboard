@@ -23,33 +23,47 @@ export function TemperatureGraph() {
   useEffect(() => {
     if (!chartRef.current) return;
 
-    // Build aligned time series from history data
-    const allTimes = new Set<number>();
-    for (const id of entityIds) {
-      for (const p of history[id] || []) allTimes.add(p.time);
-    }
-    const times = Array.from(allTimes).sort((a, b) => a - b);
-    if (times.length < 2) return;
+    // Create a uniform time axis with fixed intervals
+    const now = Math.floor(Date.now() / 1000);
+    const start = now - 24 * 60 * 60;
+    const interval = (24 * 60 * 60) / 96; // 96 points = every 15 min
+    const times: number[] = [];
+    for (let t = start; t <= now; t += interval) times.push(t);
+
+    // Interpolate each series onto the uniform time axis
+    const series: (number | null)[][] = entityIds.map((id) => {
+      const points = history[id] || [];
+      if (points.length === 0) return times.map(() => null);
+      return times.map((t) => {
+        // Find surrounding points
+        let lo = 0, hi = points.length - 1;
+        if (t <= points[0].time) return points[0].value;
+        if (t >= points[hi].time) return points[hi].value;
+        for (let i = 0; i < points.length - 1; i++) {
+          if (points[i].time <= t && points[i + 1].time >= t) {
+            lo = i; hi = i + 1; break;
+          }
+        }
+        // Linear interpolation between points
+        const ratio = (t - points[lo].time) / (points[hi].time - points[lo].time);
+        return points[lo].value + ratio * (points[hi].value - points[lo].value);
+      });
+    });
+
+    const hasData = series.some((s) => s.some((v) => v !== null));
+    if (!hasData) return;
 
     const data: uPlot.AlignedData = [
-      new Float64Array(times),
-      ...entityIds.map((id) => {
-        const points = history[id] || [];
-        const values = new Float64Array(times.length);
-        let pi = 0;
-        for (let i = 0; i < times.length; i++) {
-          while (pi < points.length - 1 && points[pi + 1].time <= times[i]) pi++;
-          values[i] = points[pi]?.value ?? NaN;
-        }
-        return values;
-      }),
+      times,
+      ...series,
     ];
 
     const width = chartRef.current.clientWidth;
+    const splinePaths = uPlot.paths.spline!();
 
     const opts: uPlot.Options = {
       width,
-      height: 200,
+      height: 220,
       cursor: { show: true, x: true, y: false },
       select: { show: false, left: 0, top: 0, width: 0, height: 0 },
       legend: { show: true },
@@ -74,27 +88,21 @@ export function TemperatureGraph() {
           stroke: ROOM_COLORS[i],
           width: 2.5,
           points: { show: false },
-          paths: uPlot.paths.spline!(),
+          paths: splinePaths,
         })),
       ],
     };
 
-    if (plotRef.current) {
-      plotRef.current.destroy();
-    }
+    if (plotRef.current) plotRef.current.destroy();
     plotRef.current = new uPlot(opts, data, chartRef.current);
 
-    return () => {
-      plotRef.current?.destroy();
-      plotRef.current = null;
-    };
+    return () => { plotRef.current?.destroy(); plotRef.current = null; };
   }, [history, entityIds]);
 
-  // Resize handler
   useEffect(() => {
     const handleResize = () => {
       if (plotRef.current && chartRef.current) {
-        plotRef.current.setSize({ width: chartRef.current.clientWidth, height: 200 });
+        plotRef.current.setSize({ width: chartRef.current.clientWidth, height: 220 });
       }
     };
     window.addEventListener("resize", handleResize);
